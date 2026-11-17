@@ -26,7 +26,8 @@ import play.api.test.Helpers._
 import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.Retrieval
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.auth.core.retrieve.~
+import uk.gov.hmrc.http.{HeaderCarrier, UnauthorizedException}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,6 +36,7 @@ class AuthActionSpec extends SpecBase {
 
   class Harness(authAction: IdentifierAction) {
     def onPageLoad(): Action[AnyContent] = authAction { _ => Results.Ok }
+    def onPageLoadShowingReference(): Action[AnyContent] = authAction { request => Results.Ok(request.enrolmentReference.value) }
   }
 
   "Auth Action" - {
@@ -178,6 +180,93 @@ class AuthActionSpec extends SpecBase {
         }
       }
     }
+
+    "when the user is signed in" - {
+
+      def runWith(enrolments: Enrolments, internalId: Option[String] = Some("id")) = {
+        val application = applicationBuilder(userAnswers = None).build()
+        val bodyParsers = application.injector.instanceOf[BodyParsers.Default]
+        val appConfig   = application.injector.instanceOf[FrontendAppConfig]
+        val authAction  = new AuthenticatedIdentifierAction(new FakeIdAndEnrolmentsAuthConnector(internalId, enrolments), appConfig, bodyParsers)
+        (application, new Harness(authAction))
+      }
+
+      "must allow an activated agent and add the agent reference to the request" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeAgent())))
+
+        running(application) {
+          val result = controller.onPageLoadShowingReference()(FakeRequest())
+
+          status(result) mustBe OK
+          contentAsString(result) mustBe "AB1234"
+        }
+      }
+
+      "must allow an activated organisation and add the EmpRef to the request" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeOrg())))
+
+        running(application) {
+          val result = controller.onPageLoadShowingReference()(FakeRequest())
+
+          status(result) mustBe OK
+          contentAsString(result) mustBe "123/AB45678"
+        }
+      }
+
+      "must use the agent reference when the user has both activated enrolments" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeAgent(), TestEnrolments.payeOrg())))
+
+        running(application) {
+          val result = controller.onPageLoadShowingReference()(FakeRequest())
+
+          status(result) mustBe OK
+          contentAsString(result) mustBe "AB1234"
+        }
+      }
+
+      "must redirect to the activate enrolment page when the agent enrolment is not activated" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeAgent("NotYetActivated"))))
+
+        running(application) {
+          val result = controller.onPageLoad()(FakeRequest())
+
+          status(result) mustBe SEE_OTHER
+          redirectLocation(result).value mustBe routes.ActivateEnrolmentController.onPageLoad().url
+        }
+      }
+
+      "must redirect to the activate enrolment page when the organisation enrolment is not activated" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeOrg("NotYetActivated"))))
+
+        running(application) {
+          val result = controller.onPageLoad()(FakeRequest())
+
+          status(result) mustBe SEE_OTHER
+          redirectLocation(result).value mustBe routes.ActivateEnrolmentController.onPageLoad().url
+        }
+      }
+
+      "must redirect to the unauthorised page when the user has no PAYE enrolments" in {
+        val (application, controller) = runWith(Enrolments(Set.empty))
+
+        running(application) {
+          val result = controller.onPageLoad()(FakeRequest())
+
+          status(result) mustBe SEE_OTHER
+          redirectLocation(result).value mustBe routes.UnauthorisedController.onPageLoad().url
+        }
+      }
+
+      "must fail with an UnauthorizedException when auth does not return an internal id" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeAgent())), internalId = None)
+
+        running(application) {
+          val result = controller.onPageLoad()(FakeRequest())
+
+          result.failed.futureValue mustBe an[UnauthorizedException]
+        }
+      }
+    }
   }
 }
 
@@ -186,4 +275,11 @@ class FakeFailingAuthConnector @Inject()(exceptionToReturn: Throwable) extends A
 
   override def authorise[A](predicate: Predicate, retrieval: Retrieval[A])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[A] =
     Future.failed(exceptionToReturn)
+}
+
+class FakeIdAndEnrolmentsAuthConnector(internalId: Option[String], enrolments: Enrolments) extends AuthConnector {
+  val serviceUrl: String = ""
+
+  override def authorise[A](predicate: Predicate, retrieval: Retrieval[A])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[A] =
+    Future.successful(new ~(internalId, enrolments).asInstanceOf[A])
 }

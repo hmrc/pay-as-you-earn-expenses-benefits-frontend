@@ -47,6 +47,8 @@ trait SpecBase
       .overrides(
         bind[DataRequiredAction].to[DataRequiredActionImpl],
         bind[IdentifierAction].to[FakeIdentifierAction],
+        bind[AgentIdentifierAction].to[FakeAgentIdentifierAction],
+        bind[OrgIdentifierAction].to[FakeOrgIdentifierAction],
         bind[DataRetrievalAction].toInstance(new FakeDataRetrievalAction(userAnswers))
       )
 }
