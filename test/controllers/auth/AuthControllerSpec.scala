@@ -18,13 +18,15 @@ package controllers.auth
 
 import base.SpecBase
 import config.FrontendAppConfig
+import controllers.actions.{FakeFailingAuthConnector, FakeInternalIdAuthConnector}
 import org.mockito.ArgumentMatchers.{any, eq => eqTo}
-import org.mockito.Mockito.{times, verify, when}
+import org.mockito.Mockito.{never, times, verify, when}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.inject.bind
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import repositories.SessionRepository
+import uk.gov.hmrc.auth.core.{AuthConnector, MissingBearerToken}
 
 import java.net.URLEncoder
 
@@ -34,14 +36,17 @@ class AuthControllerSpec extends SpecBase with MockitoSugar {
 
   "signOut" - {
 
-    "must clear user answers and redirect to sign out, specifying the exit survey as the continue URL" in {
+    "must clear user answers and redirect to sign out, specifying the exit survey as the continue URL, for a signed-in user with no PAYE enrolment" in {
 
       val mockSessionRepository = mock[SessionRepository]
       when(mockSessionRepository.clear(any())) thenReturn Future.successful(true)
 
       val application =
         applicationBuilder(None)
-          .overrides(bind[SessionRepository].toInstance(mockSessionRepository))
+          .overrides(
+            bind[SessionRepository].toInstance(mockSessionRepository),
+            bind[AuthConnector].toInstance(new FakeInternalIdAuthConnector(Some(userAnswersId)))
+          )
           .build()
 
       running(application) {
@@ -59,6 +64,31 @@ class AuthControllerSpec extends SpecBase with MockitoSugar {
         verify(mockSessionRepository, times(1)).clear(eqTo(userAnswersId))
       }
     }
+
+    "must redirect to sign out without clearing anything when the user is not signed in" in {
+
+      val mockSessionRepository = mock[SessionRepository]
+
+      val application =
+        applicationBuilder(None)
+          .overrides(
+            bind[SessionRepository].toInstance(mockSessionRepository),
+            bind[AuthConnector].toInstance(new FakeFailingAuthConnector(new MissingBearerToken))
+          )
+          .build()
+
+      running(application) {
+
+        val appConfig = application.injector.instanceOf[FrontendAppConfig]
+        val request   = FakeRequest(GET, routes.AuthController.signOut().url)
+
+        val result = route(application, request).value
+
+        status(result) mustEqual SEE_OTHER
+        redirectLocation(result).value must startWith(appConfig.signOutUrl)
+        verify(mockSessionRepository, never()).clear(any())
+      }
+    }
   }
 
   "signOutNoSurvey" - {
@@ -70,7 +100,10 @@ class AuthControllerSpec extends SpecBase with MockitoSugar {
 
       val application =
         applicationBuilder(None)
-          .overrides(bind[SessionRepository].toInstance(mockSessionRepository))
+          .overrides(
+            bind[SessionRepository].toInstance(mockSessionRepository),
+            bind[AuthConnector].toInstance(new FakeInternalIdAuthConnector(Some(userAnswersId)))
+          )
           .build()
 
       running(application) {

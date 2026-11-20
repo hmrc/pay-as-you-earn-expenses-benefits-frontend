@@ -47,3 +47,16 @@ signedOut.guidance = We did not save your answers.
 
 unauthorised.title = You can’t access this service with this account
 unauthorised.heading = You can’t access this service with this account
+unauthorised.guidance = [Placeholder - content to be agreed with UCD]
+
+activateEnrolment.title = You need to activate your enrolment
+activateEnrolment.heading = You need to activate your enrolment
+activateEnrolment.guidance = [Placeholder - content to be agreed with UCD]
+
+ag1.title = AG1 placeholder
+ag1.heading = AG1 placeholder
+ag1.reference = Agent reference: {0}
+
+org1.title = ORG1 placeholder
+org1.heading = ORG1 placeholder
+org1.reference = Employer reference: {0}
