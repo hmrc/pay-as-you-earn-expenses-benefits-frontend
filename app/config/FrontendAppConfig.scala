@@ -37,6 +37,17 @@ class FrontendAppConfig @Inject() (configuration: Configuration) {
   val loginContinueUrl: String = configuration.get[String]("urls.loginContinue")
   val signOutUrl: String       = configuration.get[String]("urls.signOut")
 
+  private val noticeViewUrl: String = configuration.get[String]("urls.noticeView")
+  private val payeFilingUrl: String = configuration.get[String]("urls.payeFiling")
+
+  def recentNoticesUrl(agentReference: String): String   = s"$noticeViewUrl/agent/$agentReference/recent-notices"
+  def filingOnlyReturnUrl(agentReference: String): String = s"$payeFilingUrl/agent/$agentReference"
+
+  val payeFaqsUrl: String               = configuration.get[String]("urls.payeFaqs")
+  val payrollSoftwareUrl: String        = configuration.get[String]("urls.payrollSoftware")
+  val onlineServicesHelpdeskUrl: String = configuration.get[String]("urls.onlineServicesHelpdesk")
+  val requestAuthorisationUrl: String   = configuration.get[String]("urls.requestAuthorisation")
+
   private val exitSurveyBaseUrl: String = configuration.get[Service]("microservice.services.feedback-frontend").baseUrl
   val exitSurveyUrl: String             = s"$exitSurveyBaseUrl/feedback/pay-as-you-earn-expenses-benefits-frontend"
 
@@ -52,4 +63,9 @@ class FrontendAppConfig @Inject() (configuration: Configuration) {
   val countdown: Int = configuration.get[Int]("timeout-dialog.countdown")
 
   val cacheTtl: Long = configuration.get[Int]("mongodb.timeToLiveInSeconds")
+
+  val payeExbUrl: String = s"${configuration.get[Service]("microservice.services.paye-exb").baseUrl}/paye-exb"
+
+  val clientListService: String          = configuration.get[String]("client-list.service")
+  val clientListGracePeriodSeconds: Int = configuration.get[Int]("client-list.grace-period-seconds")
 }

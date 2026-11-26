@@ -26,7 +26,7 @@ import play.api.test.Helpers._
 import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.Retrieval
-import uk.gov.hmrc.auth.core.retrieve.~
+import uk.gov.hmrc.auth.core.retrieve.{Credentials, ~}
 import uk.gov.hmrc.http.{HeaderCarrier, UnauthorizedException}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -37,6 +37,7 @@ class AuthActionSpec extends SpecBase {
   class Harness(authAction: IdentifierAction) {
     def onPageLoad(): Action[AnyContent] = authAction { _ => Results.Ok }
     def onPageLoadShowingReference(): Action[AnyContent] = authAction { request => Results.Ok(request.enrolmentReference.value) }
+    def onPageLoadShowingCredentialId(): Action[AnyContent] = authAction { request => Results.Ok(request.credentialId) }
   }
 
   "Auth Action" - {
@@ -183,11 +184,11 @@ class AuthActionSpec extends SpecBase {
 
     "when the user is signed in" - {
 
-      def runWith(enrolments: Enrolments, internalId: Option[String] = Some("id")) = {
+      def runWith(enrolments: Enrolments, internalId: Option[String] = Some("id"), credentials: Option[Credentials] = Some(TestEnrolments.credentials)) = {
         val application = applicationBuilder(userAnswers = None).build()
         val bodyParsers = application.injector.instanceOf[BodyParsers.Default]
         val appConfig   = application.injector.instanceOf[FrontendAppConfig]
-        val authAction  = new AuthenticatedIdentifierAction(new FakeIdAndEnrolmentsAuthConnector(internalId, enrolments), appConfig, bodyParsers)
+        val authAction  = new AuthenticatedIdentifierAction(new FakeIdAndEnrolmentsAuthConnector(internalId, enrolments, credentials), appConfig, bodyParsers)
         (application, new Harness(authAction))
       }
 
@@ -257,6 +258,27 @@ class AuthActionSpec extends SpecBase {
         }
       }
 
+      "must add the credential id to the request" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeAgent())))
+
+        running(application) {
+          val result = controller.onPageLoadShowingCredentialId()(FakeRequest())
+
+          status(result) mustBe OK
+          contentAsString(result) mustBe TestEnrolments.credentialId
+        }
+      }
+
+      "must fail with an UnauthorizedException when auth does not return credentials" in {
+        val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeAgent())), credentials = None)
+
+        running(application) {
+          val result = controller.onPageLoad()(FakeRequest())
+
+          result.failed.futureValue mustBe an[UnauthorizedException]
+        }
+      }
+
       "must fail with an UnauthorizedException when auth does not return an internal id" in {
         val (application, controller) = runWith(Enrolments(Set(TestEnrolments.payeAgent())), internalId = None)
 
@@ -277,9 +299,13 @@ class FakeFailingAuthConnector @Inject()(exceptionToReturn: Throwable) extends A
     Future.failed(exceptionToReturn)
 }
 
-class FakeIdAndEnrolmentsAuthConnector(internalId: Option[String], enrolments: Enrolments) extends AuthConnector {
+class FakeIdAndEnrolmentsAuthConnector(
+  internalId: Option[String],
+  enrolments: Enrolments,
+  credentials: Option[Credentials] = Some(TestEnrolments.credentials)
+) extends AuthConnector {
   val serviceUrl: String = ""
 
   override def authorise[A](predicate: Predicate, retrieval: Retrieval[A])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[A] =
-    Future.successful(new ~(internalId, enrolments).asInstanceOf[A])
+    Future.successful(new ~(new ~(internalId, credentials), enrolments).asInstanceOf[A])
 }

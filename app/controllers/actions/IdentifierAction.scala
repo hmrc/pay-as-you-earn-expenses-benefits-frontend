@@ -44,16 +44,19 @@ class AuthenticatedIdentifierAction @Inject()(
 
     implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequestAndSession(request, request.session)
 
-    authorised().retrieve(Retrievals.internalId and Retrievals.allEnrolments) {
-      case None ~ _ =>
+    authorised().retrieve(Retrievals.internalId and Retrievals.credentials and Retrievals.allEnrolments) {
+      case None ~ _ ~ _ =>
         Future.failed(new UnauthorizedException("Unable to retrieve internal Id"))
 
-      case Some(internalId) ~ enrolments =>
+      case _ ~ None ~ _ =>
+        Future.failed(new UnauthorizedException("Unable to retrieve credentials"))
+
+      case Some(internalId) ~ Some(credentials) ~ enrolments =>
         (PayeEnrolment.agentReference(enrolments), PayeEnrolment.empRef(enrolments)) match {
           case (EnrolmentCheck.Activated(agentReference), _) =>
-            block(IdentifierRequest(request, internalId, EnrolmentReference.Agent(agentReference)))
+            block(IdentifierRequest(request, internalId, EnrolmentReference.Agent(agentReference), credentials.providerId))
           case (_, EnrolmentCheck.Activated(empRef)) =>
-            block(IdentifierRequest(request, internalId, EnrolmentReference.Organisation(empRef)))
+            block(IdentifierRequest(request, internalId, EnrolmentReference.Organisation(empRef), credentials.providerId))
           case (EnrolmentCheck.NotActivated, _) | (_, EnrolmentCheck.NotActivated) =>
             Future.successful(Redirect(routes.ActivateEnrolmentController.onPageLoad()))
           case _ =>

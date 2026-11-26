@@ -32,6 +32,7 @@ class OrgIdentifierActionSpec extends SpecBase {
 
   class Harness(authAction: OrgIdentifierAction) {
     def onPageLoad(): Action[AnyContent] = authAction { request => Results.Ok(request.enrolmentReference.value) }
+    def onPageLoadShowingCredentialId(): Action[AnyContent] = authAction { request => Results.Ok(request.credentialId) }
   }
 
   private def harness(connector: AuthConnector): (Harness, FrontendAppConfig, play.api.Application) = {
@@ -90,7 +91,7 @@ class OrgIdentifierActionSpec extends SpecBase {
 
     "when the user is an Agent with an activated IR-PAYE-AGENT enrolment" - {
 
-      "must redirect to Ag1" in {
+      "must redirect to the agent at a glance page" in {
         val (controller, _, application) =
           harness(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Agent), Enrolments(Set(payeAgent()))))
 
@@ -98,7 +99,7 @@ class OrgIdentifierActionSpec extends SpecBase {
           val result = controller.onPageLoad()(FakeRequest())
 
           status(result) mustBe SEE_OTHER
-          redirectLocation(result).value mustBe routes.Ag1Controller.onPageLoad().url
+          redirectLocation(result).value mustBe controllers.atAGlance.routes.AgentAtAGlanceController.onPageLoad().url
         }
       }
     }
@@ -135,7 +136,7 @@ class OrgIdentifierActionSpec extends SpecBase {
 
     "when the user is an Individual holding both activated enrolments" - {
 
-      "must redirect to the unauthorised page rather than bouncing between AG1 and ORG1" in {
+      "must redirect to the unauthorised page rather than bouncing between the agent and organisation pages" in {
         val (controller, _, application) =
           harness(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Individual), Enrolments(Set(payeAgent(), payeOrg()))))
 
@@ -144,6 +145,35 @@ class OrgIdentifierActionSpec extends SpecBase {
 
           status(result) mustBe SEE_OTHER
           redirectLocation(result).value mustBe routes.UnauthorisedController.onPageLoad().url
+        }
+      }
+    }
+
+    "when the user is signed in with an activated enrolment" - {
+
+      "must add the credential id to the request" in {
+        val (controller, _, application) =
+          harness(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Organisation), Enrolments(Set(payeOrg()))))
+
+        running(application) {
+          val result = controller.onPageLoadShowingCredentialId()(FakeRequest())
+
+          status(result) mustBe OK
+          contentAsString(result) mustBe credentialId
+        }
+      }
+    }
+
+    "when auth does not return credentials" - {
+
+      "must fail with an UnauthorizedException" in {
+        val (controller, _, application) =
+          harness(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Organisation), Enrolments(Set(payeOrg())), credentials = None))
+
+        running(application) {
+          val result = controller.onPageLoad()(FakeRequest())
+
+          result.failed.futureValue mustBe an[UnauthorizedException]
         }
       }
     }

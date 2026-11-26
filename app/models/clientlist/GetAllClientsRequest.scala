@@ -1,4 +1,4 @@
-@*
+/*
  * Copyright 2026 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +12,20 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *@
+ */
 
-@this(
-    layout: templates.Layout
+package models.clientlist
+
+import play.api.libs.json.{Json, OFormat}
+
+final case class GetAllClientsRequest(
+  irAgentId: String,
+  credentialId: String,
+  start: Int = 0,
+  count: Int = 30,
+  sort: Int = 0,
+  order: String = "ASC"
 )
 
-@(reference: String)(implicit request: Request[_], messages: Messages)
-
-@layout(pageTitle = titleNoForm(messages("ag1.title"))) {
-
-    <h1 class="govuk-heading-xl">@messages("ag1.heading")</h1>
-
-    <p class="govuk-body" id="enrolment-reference">@messages("ag1.reference", reference)</p>
-}
+object GetAllClientsRequest:
+  given OFormat[GetAllClientsRequest] = Json.format[GetAllClientsRequest]

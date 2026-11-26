@@ -32,6 +32,7 @@ class AgentIdentifierActionSpec extends SpecBase {
 
   class Harness(authAction: AgentIdentifierAction) {
     def onPageLoad(): Action[AnyContent] = authAction { request => Results.Ok(request.enrolmentReference.value) }
+    def onPageLoadShowingCredentialId(): Action[AnyContent] = authAction { request => Results.Ok(request.credentialId) }
   }
 
   private def harness(connector: AuthConnector): (Harness, FrontendAppConfig, play.api.Application) = {
@@ -120,7 +121,7 @@ class AgentIdentifierActionSpec extends SpecBase {
 
     "when the user is an Individual holding both activated enrolments" - {
 
-      "must redirect to the unauthorised page rather than bouncing between AG1 and ORG1" in {
+      "must redirect to the unauthorised page rather than bouncing between the agent and organisation pages" in {
         val (controller, _, application) =
           harness(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Individual), Enrolments(Set(payeAgent(), payeOrg()))))
 
@@ -129,6 +130,35 @@ class AgentIdentifierActionSpec extends SpecBase {
 
           status(result) mustBe SEE_OTHER
           redirectLocation(result).value mustBe routes.UnauthorisedController.onPageLoad().url
+        }
+      }
+    }
+
+    "when the user is signed in with an activated enrolment" - {
+
+      "must add the credential id to the request" in {
+        val (controller, _, application) =
+          harness(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Agent), Enrolments(Set(payeAgent()))))
+
+        running(application) {
+          val result = controller.onPageLoadShowingCredentialId()(FakeRequest())
+
+          status(result) mustBe OK
+          contentAsString(result) mustBe credentialId
+        }
+      }
+    }
+
+    "when auth does not return credentials" - {
+
+      "must fail with an UnauthorizedException" in {
+        val (controller, _, application) =
+          harness(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Agent), Enrolments(Set(payeAgent())), credentials = None))
+
+        running(application) {
+          val result = controller.onPageLoad()(FakeRequest())
+
+          result.failed.futureValue mustBe an[UnauthorizedException]
         }
       }
     }

@@ -22,6 +22,13 @@ GET         /unauthorised                                controllers.Unauthorise
 
 GET         /activate-enrolment                          controllers.ActivateEnrolmentController.onPageLoad()
 
-GET         /ag1                                         controllers.Ag1Controller.onPageLoad()
-
 GET         /org1                                        controllers.Org1Controller.onPageLoad()
+
+GET         /agent                                       controllers.atAGlance.AgentAtAGlanceController.onPageLoad()
+POST        /agent                                       controllers.atAGlance.AgentAtAGlanceController.onSubmit()
+GET         /agent/try-again                             controllers.atAGlance.AgentAtAGlanceController.tryAgain()
+GET         /agent/clients                               controllers.atAGlance.AgentClientsController.onPageLoad()
+GET         /agent/clients/download                      controllers.atAGlance.AgentPlaceholderController.downloadClients()
+GET         /agent/filing-choices                        controllers.atAGlance.AgentPlaceholderController.filingChoices()
+GET         /agent/notice-options                        controllers.atAGlance.AgentPlaceholderController.noticeOptions()
+GET         /agent/notification-email                    controllers.atAGlance.AgentPlaceholderController.notificationEmail()

@@ -22,5 +22,6 @@ import play.api.mvc.{Request, WrappedRequest}
 case class IdentifierRequest[A] (
                                   request: Request[A],
                                   userId: String,
-                                  enrolmentReference: EnrolmentReference
+                                  enrolmentReference: EnrolmentReference,
+                                  credentialId: String
                                 ) extends WrappedRequest[A](request)
