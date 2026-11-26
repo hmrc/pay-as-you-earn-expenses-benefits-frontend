@@ -23,12 +23,14 @@ case class OptionalDataRequest[A] (
                                      request: Request[A],
                                      userId: String,
                                      userAnswers: Option[UserAnswers],
-                                     enrolmentReference: EnrolmentReference
+                                     enrolmentReference: EnrolmentReference,
+                                     credentialId: String
                                    ) extends WrappedRequest[A](request)
 
 case class DataRequest[A] (
                              request: Request[A],
                              userId: String,
                              userAnswers: UserAnswers,
-                             enrolmentReference: EnrolmentReference
+                             enrolmentReference: EnrolmentReference,
+                             credentialId: String
                            ) extends WrappedRequest[A](request)

@@ -17,7 +17,7 @@
 package controllers.actions
 
 import uk.gov.hmrc.auth.core.authorise.Predicate
-import uk.gov.hmrc.auth.core.retrieve.{Retrieval, ~}
+import uk.gov.hmrc.auth.core.retrieve.{Credentials, Retrieval, ~}
 import uk.gov.hmrc.auth.core.{AffinityGroup, AuthConnector, Enrolment, EnrolmentIdentifier, Enrolments}
 import uk.gov.hmrc.http.HeaderCarrier
 
@@ -26,18 +26,23 @@ import scala.concurrent.{ExecutionContext, Future}
 class FakeSuccessfulAuthConnector(
                                    internalId: Option[String],
                                    affinityGroup: Option[AffinityGroup],
-                                   enrolments: Enrolments
+                                   enrolments: Enrolments,
+                                   credentials: Option[Credentials] = Some(TestEnrolments.credentials)
                                  ) extends AuthConnector {
 
   val serviceUrl: String = ""
 
   override def authorise[A](predicate: Predicate, retrieval: Retrieval[A])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[A] =
-    Future.successful((new ~(new ~(internalId, affinityGroup), enrolments)).asInstanceOf[A])
+    Future.successful((new ~(new ~(new ~(internalId, credentials), affinityGroup), enrolments)).asInstanceOf[A])
 }
 
 object TestEnrolments {
 
   val agentReference: String = "AB1234"
+
+  val credentialId: String = "cred-id-1234"
+
+  val credentials: Credentials = Credentials(credentialId, "GovernmentGateway")
 
   def payeAgent(state: String = "Activated"): Enrolment =
     Enrolment("IR-PAYE-AGENT", Seq(EnrolmentIdentifier("IRAgentReference", agentReference)), state)

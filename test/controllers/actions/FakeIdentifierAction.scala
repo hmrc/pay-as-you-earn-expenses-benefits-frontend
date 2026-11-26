@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class FakeIdentifierAction @Inject()(bodyParsers: PlayBodyParsers) extends IdentifierAction {
 
   override def invokeBlock[A](request: Request[A], block: IdentifierRequest[A] => Future[Result]): Future[Result] =
-    block(IdentifierRequest(request, "id", EnrolmentReference.Agent("AB1234")))
+    block(IdentifierRequest(request, "id", EnrolmentReference.Agent("AB1234"), "cred-id-1234"))
 
   override def parser: BodyParser[AnyContent] =
     bodyParsers.default

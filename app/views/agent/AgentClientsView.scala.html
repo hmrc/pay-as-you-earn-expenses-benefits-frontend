@@ -1,0 +1,113 @@
+@*
+ * Copyright 2026 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *@
+
+@import config.FrontendAppConfig
+@import models.clientlist.SearchType
+@import viewmodels.agent.AgentNavigation
+
+@this(
+    layout: templates.Layout,
+    appConfig: FrontendAppConfig,
+    navigation: AgentNavigation,
+    caption: AgentCaption,
+    filingOnlyService: FilingOnlyService,
+    formHelper: FormWithCSRF,
+    govukErrorSummary: GovukErrorSummary,
+    govukRadios: GovukRadios,
+    govukInput: GovukInput,
+    govukButton: GovukButton,
+    govukDetails: GovukDetails
+)
+
+@(form: Form[_], agentReference: String)(implicit request: Request[_], messages: Messages)
+
+@layout(
+    pageTitle         = title(form, messages("agentAtAGlance.clients.title")),
+    showBackLink      = false,
+    serviceNavigation = Some(navigation.full(agentReference))
+) {
+
+    @if(form.hasErrors) {
+        @govukErrorSummary(ErrorSummaryViewModel(form))
+    }
+
+    @caption(agentReference)
+    <h1 class="govuk-heading-xl">@messages("agentAtAGlance.clients.heading")</h1>
+
+    <h2 class="govuk-heading-m">@messages("agentAtAGlance.search.heading")</h2>
+
+    @formHelper(action = controllers.atAGlance.routes.AgentAtAGlanceController.onSubmit(), Symbol("autoComplete") -> "off") {
+
+        @govukRadios(Radios(
+            fieldset = Some(Fieldset(legend = Some(Legend(
+                content = Text(messages("agentAtAGlance.search.legend")),
+                classes = "govuk-fieldset__legend--s"
+            )))),
+            idPrefix = Some("searchType"),
+            name = "searchType",
+            classes = "govuk-radios--inline",
+            errorMessage = form("searchType").error.map(e => ErrorMessage.errorMessageWithDefaultStringsTranslated(content = Text(messages(e.message, e.args*)))),
+            items = SearchType.values.toSeq.map { searchType =>
+                RadioItem(
+                    content = Text(messages(s"agentAtAGlance.search.${searchType.toString}")),
+                    value = Some(searchType.toString),
+                    checked = form("searchType").value.contains(searchType.toString)
+                )
+            }
+        ))
+
+        @govukInput(Input(
+            id = "searchValue",
+            name = "searchValue",
+            value = form("searchValue").value,
+            label = Label(content = Text(messages("agentAtAGlance.search.searchValue.label"))),
+            hint = Some(Hint(content = Text(messages("agentAtAGlance.search.searchValue.hint")))),
+            classes = "govuk-!-width-one-half",
+            errorMessage = form("searchValue").error.map(e => ErrorMessage.errorMessageWithDefaultStringsTranslated(content = Text(messages(e.message, e.args*))))
+        ))
+
+        @govukButton(ButtonViewModel(messages("agentAtAGlance.search.button")).asSecondaryButton())
+    }
+
+    <ul class="govuk-list">
+        <li><a class="govuk-link" id="view-all-clients" href="@controllers.atAGlance.routes.AgentClientsController.onPageLoad()">@messages("agentAtAGlance.search.viewAll")</a></li>
+        <li><a class="govuk-link" id="download-clients" href="@controllers.atAGlance.routes.AgentPlaceholderController.downloadClients()">@messages("agentAtAGlance.search.download")</a></li>
+    </ul>
+
+    <p class="govuk-body-s">@messages("agentAtAGlance.search.downloadTime")</p>
+
+    @govukDetails(Details(
+        summary = Text(messages("agentAtAGlance.search.help.summary")),
+        content = HtmlContent(s"""<p class="govuk-body">${messages("agentAtAGlance.search.help.content")}</p>""")
+    ))
+
+    @filingOnlyService(agentReference)
+
+    <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+    <h2 class="govuk-heading-m">@messages("agentAtAGlance.notices.heading")</h2>
+    <p class="govuk-body">@messages("agentAtAGlance.notices.p1")</p>
+    <p class="govuk-body"><a class="govuk-link" id="recent-notices" href="@appConfig.recentNoticesUrl(agentReference)">@messages("agentAtAGlance.notices.link")</a></p>
+
+    <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+    <h2 class="govuk-heading-m">@messages("agentAtAGlance.noticeOptions.heading")</h2>
+    <p class="govuk-body">@messages("agentAtAGlance.noticeOptions.p1")</p>
+    <ul class="govuk-list">
+        <li><a class="govuk-link" id="notice-options" href="@controllers.atAGlance.routes.AgentPlaceholderController.noticeOptions()">@messages("agentAtAGlance.noticeOptions.change")</a></li>
+        <li><a class="govuk-link" id="notification-email" href="@controllers.atAGlance.routes.AgentPlaceholderController.notificationEmail()">@messages("agentAtAGlance.noticeOptions.email")</a></li>
+    </ul>
+}

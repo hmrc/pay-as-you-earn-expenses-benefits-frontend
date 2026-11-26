@@ -1,0 +1,32 @@
+@*
+ * Copyright 2026 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *@
+
+@import config.FrontendAppConfig
+
+@this(appConfig: FrontendAppConfig)
+
+@(agentReference: String)(implicit messages: Messages)
+
+<hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
+
+<h2 class="govuk-heading-m">@messages("agent.filingOnly.heading")</h2>
+
+<p class="govuk-body">@messages("agent.filingOnly.p1")</p>
+
+<ul class="govuk-list">
+    <li><a class="govuk-link" id="file-a-return" href="@appConfig.filingOnlyReturnUrl(agentReference)">@messages("agent.filingOnly.fileReturn")</a></li>
+    <li><a class="govuk-link" id="payroll-software" href="@appConfig.payrollSoftwareUrl">@messages("agent.filingOnly.payrollSoftware")</a></li>
+</ul>

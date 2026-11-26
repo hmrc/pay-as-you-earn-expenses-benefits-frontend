@@ -44,20 +44,23 @@ class AuthenticatedAgentIdentifierAction @Inject()(
                                                   )(implicit val executionContext: ExecutionContext)
   extends AgentIdentifierAction with AuthorisedFunctions with Logging {
 
-  private val retrievals = Retrievals.internalId and Retrievals.affinityGroup and Retrievals.allEnrolments
+  private val retrievals = Retrievals.internalId and Retrievals.credentials and Retrievals.affinityGroup and Retrievals.allEnrolments
 
   override def invokeBlock[A](request: Request[A], block: IdentifierRequest[A] => Future[Result]): Future[Result] = {
 
     implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromRequestAndSession(request, request.session)
 
     authorised(AuthProviders(GovernmentGateway)).retrieve(retrievals) {
-      case None ~ _ ~ _ =>
+      case None ~ _ ~ _ ~ _ =>
         Future.failed(new UnauthorizedException("Unable to retrieve internal Id"))
 
-      case Some(internalId) ~ Some(AffinityGroup.Agent) ~ enrolments =>
+      case _ ~ None ~ _ ~ _ =>
+        Future.failed(new UnauthorizedException("Unable to retrieve credentials"))
+
+      case Some(internalId) ~ Some(credentials) ~ Some(AffinityGroup.Agent) ~ enrolments =>
         PayeEnrolment.agentReference(enrolments) match {
           case EnrolmentCheck.Activated(agentReference) =>
-            block(IdentifierRequest(request, internalId, EnrolmentReference.Agent(agentReference)))
+            block(IdentifierRequest(request, internalId, EnrolmentReference.Agent(agentReference), credentials.providerId))
           case EnrolmentCheck.NotActivated =>
             logger.info(s"[AgentIdentifierAction] Agent has a ${PayeEnrolment.AgentKey} enrolment but it is not activated")
             Future.successful(Redirect(routes.ActivateEnrolmentController.onPageLoad()))
@@ -66,11 +69,11 @@ class AuthenticatedAgentIdentifierAction @Inject()(
             Future.successful(Redirect(routes.UnauthorisedController.onPageLoad()))
         }
 
-      case _ ~ Some(AffinityGroup.Organisation) ~ enrolments if PayeEnrolment.empRef(enrolments).isActivated =>
+      case _ ~ _ ~ Some(AffinityGroup.Organisation) ~ enrolments if PayeEnrolment.empRef(enrolments).isActivated =>
         logger.info("[AgentIdentifierAction] Organisation with an activated IR-PAYE enrolment, redirecting to ORG1")
         Future.successful(Redirect(routes.Org1Controller.onPageLoad()))
 
-      case _ ~ affinityGroup ~ _ =>
+      case _ ~ _ ~ affinityGroup ~ _ =>
         logger.warn(s"[AgentIdentifierAction] Non-agent user tried to access an agent page, affinity group: $affinityGroup")
         Future.successful(Redirect(routes.UnauthorisedController.onPageLoad()))
     } recover {

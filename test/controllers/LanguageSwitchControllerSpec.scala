@@ -30,12 +30,12 @@ class LanguageSwitchControllerSpec extends SpecBase {
 
       running(application) {
         val request = FakeRequest(GET, routes.LanguageSwitchController.switchToLanguage("cy").url)
-          .withHeaders(REFERER -> "/pay-as-you-earn-expenses-benefits-frontend/ag1")
+          .withHeaders(REFERER -> "/pay-as-you-earn-expenses-benefits-frontend/agent")
 
         val result = route(application, request).value
 
         status(result) mustEqual SEE_OTHER
-        redirectLocation(result).value mustEqual "/pay-as-you-earn-expenses-benefits-frontend/ag1"
+        redirectLocation(result).value mustEqual "/pay-as-you-earn-expenses-benefits-frontend/agent"
         cookies(result).get("PLAY_LANG").value.value mustEqual "cy"
       }
     }

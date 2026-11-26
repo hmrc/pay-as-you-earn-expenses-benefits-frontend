@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class FakeOrgIdentifierAction @Inject()(bodyParsers: PlayBodyParsers) extends OrgIdentifierAction {
 
   override def invokeBlock[A](request: Request[A], block: IdentifierRequest[A] => Future[Result]): Future[Result] =
-    block(IdentifierRequest(request, "id", FakeOrgIdentifierAction.enrolmentReference))
+    block(IdentifierRequest(request, "id", FakeOrgIdentifierAction.enrolmentReference, "cred-id-1234"))
 
   override def parser: BodyParser[AnyContent] =
     bodyParsers.default

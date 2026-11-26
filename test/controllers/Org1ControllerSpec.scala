@@ -107,7 +107,7 @@ class Org1ControllerSpec extends SpecBase with MockitoSugar {
       }
     }
 
-    "must redirect an activated Agent to AG1" in {
+    "must redirect an activated Agent to the agent at a glance page" in {
 
       val application = withRealAuth(new FakeSuccessfulAuthConnector(Some("id"), Some(AffinityGroup.Agent), Enrolments(Set(payeAgent()))))
 
@@ -115,7 +115,7 @@ class Org1ControllerSpec extends SpecBase with MockitoSugar {
         val result = route(application, FakeRequest(GET, routes.Org1Controller.onPageLoad().url)).value
 
         status(result) mustEqual SEE_OTHER
-        redirectLocation(result).value mustEqual routes.Ag1Controller.onPageLoad().url
+        redirectLocation(result).value mustEqual controllers.atAGlance.routes.AgentAtAGlanceController.onPageLoad().url
       }
     }
   }
